@@ -6,18 +6,15 @@ const bcrypt = require("bcrypt");
 
 const signUp = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) {
-            return res.status(400).json({ message: "Username and password required" });
-        }
+        const { username, email, password } = req.body;
 
-        const existingUser = await User.findOne({ username });
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: "Username already exists" });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, password: hashedPassword });
+        const newUser = new User({ username, email, password: hashedPassword });
         await newUser.save();
 
         res.status(201).json({ message: "User registered successfully" });
@@ -31,8 +28,8 @@ const signUp = async (req, res) => {
   // Signin Route
   const signIn = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username });
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(400).json({ message: "Invalid credentials" });
@@ -43,11 +40,10 @@ const signUp = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
-        const token = jwt.sign({ userId: user._id, username }, process.env.SECRET_KEY, { expiresIn: "1h" });
+        const token = jwt.sign({ userId: user._id, email }, process.env.SECRET_KEY, { expiresIn: "1h" });
 
         res.json({ message: "Signin successful", token });
     } catch (error) {
-        console.error("Signin Error:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
