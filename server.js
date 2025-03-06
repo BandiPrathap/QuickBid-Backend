@@ -21,12 +21,11 @@ if (!process.env.MONGO_URI) {
   process.exit(1); // Exit the application with an error
 }
 
-// Database connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected successfully!"))
   .catch((error) => console.log(error));
 
-
+//Routes
 app.get("/",(req,res)=>res.send("Wellcome To QuickBib"));
 app.use("/auth", authRoutes);
 app.use("/",auctionRoutes);

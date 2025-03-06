@@ -51,34 +51,48 @@ const getAuctionById =  async (req, res) => {
     }
   };
   
-  // Bidding on an item (Protected)
+// Bidding on an item (Protected)
 const bidItem = async (req, res) => {
-    try {
+  try {
       const { id } = req.params;
       const { bid } = req.body;
+
+      // Ensure user is authenticated
+      if (!req.user || !req.user.email) {
+          return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Fetch the auction item
       const item = await AuctionItem.findById(id);
-  
-      if (!item) return res.status(404).json({ message: 'Auction item not found' });
-      if (item.isClosed) return res.status(400).json({ message: 'Auction is closed' });
-  
-      if (new Date() > new Date(item.closingTime)) {
-        item.isClosed = true;
-        await item.save();
-        return res.json({ message: 'Auction closed', winner: item.highestBidder });
+      if (!item) return res.status(404).json({ message: "Auction item not found" });
+
+      // Check if the auction is closed
+      if (item.isClosed || new Date() > new Date(item.closingTime)) {
+          item.isClosed = true;
+          await item.save();
+          return res.json({ message: "Auction closed", winner: item.highestBidder || "No winner" });
       }
-  
-      if (bid > item.currentBid) {
-        item.currentBid = bid;
-        item.highestBidder = req.user.username;
-        await item.save();
-        res.json({ message: 'Bid successful', item });
-      } else {
-        res.status(400).json({ message: 'Bid too low' });
+
+      // Prevent the highest bidder from bidding again
+      if (req.user.email === item.highestBidder) {
+          return res.status(400).json({ message: "You are already the highest bidder" });
       }
-    } catch (error) {
-      console.error('Bidding Error:', error);
-      res.status(500).json({ message: 'Internal Server Error' });
-    }
-  };
+
+      // Ensure bid is higher than the current bid
+      if (bid <= item.currentBid) {
+          return res.status(400).json({ message: "Bid too low" });
+      }
+
+      // Update highest bid and bidder
+      item.currentBid = bid;
+      item.highestBidder = req.user.email;
+      await item.save();
+
+      res.json({ message: "Bid successful", item });
+  } catch (error) {
+      console.error("Bidding Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 module.exports = {createAuctionItem, getAuctions, getAuctionById, bidItem};
